@@ -31,7 +31,7 @@ contract Governance is MultiDelegateCall, UserProxyFactory, ReentrancyGuard, Own
     /// @inheritdoc IGovernance
     ILQTYStaking public immutable stakingV1;
     /// @inheritdoc IGovernance
-    IERC20 public immutable lqty;
+    IERC20 public lqty;
     /// @inheritdoc IGovernance
     IERC20 public immutable bold;
     /// @inheritdoc IGovernance
@@ -129,7 +129,6 @@ contract Governance is MultiDelegateCall, UserProxyFactory, ReentrancyGuard, Own
             emit RegisterInitiative(_initiatives[i], msg.sender, 1, success ? HookStatus.Succeeded : HookStatus.Failed);
         }
 
-        _renounceOwnership();
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -938,5 +937,18 @@ contract Governance is MultiDelegateCall, UserProxyFactory, ReentrancyGuard, Own
         for (uint256 i; i < _absoluteLQTYVotes.length; i++) {
             require(_absoluteLQTYVotes[i] == 0 || _absoluteLQTYVetos[i] == 0, "Governance: vote-and-veto");
         }
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                ONLY OWNER
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Set the LQTY token, revokes ownership after lqty is set, this can only be done once.
+    function setVotingToken(address _votingToken) external onlyOwner {
+        require(_votingToken != address(0), "Governance: voting-token-not-set");
+        require(_votingToken != address(0), "Governance: voting-token-cannot-be-zero");
+        
+        lqty = IERC20(_votingToken);
+        _renounceOwnership();
     }
 }
