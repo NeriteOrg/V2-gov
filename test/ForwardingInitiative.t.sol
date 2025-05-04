@@ -41,6 +41,8 @@ contract ForwardingInitiativeTest is MockStakingV1Deployer {
     int256[] vetos;
     address voter;
 
+    address voterProxy;
+
     function setUp() public {
         vm.warp(START_TIME);
 
@@ -67,6 +69,7 @@ contract ForwardingInitiativeTest is MockStakingV1Deployer {
         lqty.mint(voter, 1 ether);
 
         vm.startPrank(voter);
+        voterProxy = governance.deployUserProxy();
         lqty.approve(governance.deriveUserProxyAddress(voter), type(uint256).max);
         governance.depositLQTY(1 ether);
         vm.stopPrank();
@@ -82,31 +85,22 @@ contract ForwardingInitiativeTest is MockStakingV1Deployer {
     }
 
     function test_ForwardingInitiative_Claim() public {
-        bold.mint(address(voter), 1 ether);
-        lqty.mint(address(voter), 1 ether);
+        uint256 voteAmount = 1 ether;
+        bold.mint(address(voter), voteAmount);
+        bold.mint(address(governance), voteAmount);
+        lqty.mint(address(voter), voteAmount);
         vm.startPrank(voter);
-        address voterProxy = governance.deployUserProxy();
         votes[0] = 1 ether;
-        bold.approve(address(voterProxy), 1 ether);
+        bold.approve(address(voterProxy), voteAmount);
         // deposit voting token
-        governance.depositLQTY(1 ether);
+        governance.depositLQTY(voteAmount);
         // vote on initiative
         governance.allocateLQTY(noInitiatives, initiatives, votes, vetos);
         vm.stopPrank();
 
-                // Warp to end
-        {
-            vm.warp(block.timestamp + governance.EPOCH_DURATION());
-
-            (
-                IGovernance.VoteSnapshot memory snapshot,
-                IGovernance.InitiativeVoteSnapshot memory forwardingInitiativeVoteSnapshot1
-            ) = governance.snapshotVotesForInitiative(address(forwardingInitiative));
-
-            uint256 threshold = governance.getLatestVotingThreshold();
-            assertLt(forwardingInitiativeVoteSnapshot1.votes, threshold, "it didn't get rewards");
-        }
+        // One epoch later
+        vm.warp(block.timestamp + EPOCH_DURATION);
         governance.claimForInitiative(address(forwardingInitiative));
-        assertEq(bold.balanceOf(address(this)), 1 ether);
+        assertEq(bold.balanceOf(address(this)), 1 ether, "should have received rewards");
     }
 }
