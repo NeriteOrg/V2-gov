@@ -86,7 +86,7 @@ contract ForwardingInitiativeTest is MockStakingV1Deployer {
 
     function test_ForwardingInitiative_Claim() public {
         uint256 voteAmount = 1 ether;
-        bold.mint(address(voter), voteAmount);
+
         bold.mint(address(governance), voteAmount);
         lqty.mint(address(voter), voteAmount);
         vm.startPrank(voter);

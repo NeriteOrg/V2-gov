@@ -27,7 +27,7 @@ contract ForwardingInitiative is IInitiative {
         require(EPOCH_START != 0, "InitialInitiative: epoch-start-cannot-be-zero");
 
         // assert valid revenue token
-        (bool success, ) = address(_revenueToken).staticcall(abi.encodeWithSelector(IERC20.totalSupply.selector));
+        (bool success, ) = address(_revenueToken).call(abi.encodeWithSelector(IERC20.totalSupply.selector));
         require(success, "InitialInitiative: revenue-token-total-supply-call-must-succeed");
 
         require(receiver != address(0), "InitialInitiative: dao-treasury-cannot-be-zero");
