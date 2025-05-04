@@ -10,26 +10,30 @@ import {IInitiative} from "./interfaces/IInitiative.sol";
 import {DoubleLinkedList} from "./utils/DoubleLinkedList.sol";
 import {_lqtyToVotes} from "./utils/VotingPower.sol";
 
-/// @title InitialInitiative
+/// @title ForwardingInitiative
 /// @author MrDeadCe11
-/// @notice Initial initiative that is registered by default and receives 100% of the revenue and forwards it to the dao treasury
-contract InitialInitiative is IInitiative {
+/// @notice Initiative that forwards all received token to a receiver address
+contract ForwardingInitiative is IInitiative, Ownable {
     IGovernance public governance;
     IERC20 public revenueToken;
-    address public daoTreasury;
+    address public receiver;
 
-    uint256 public EPOCH_START;
-    uint256 public EPOCH_DURATION;
-
-    constructor(address _governance, address _revenueToken, address _daoTreasury) {
+    constructor(address _owner, address _governance, address _revenueToken, address _receiver) {
         require(_revenueToken != address(0), "InitialInitiative: revenue-token-cannot-be-zero");
-
+        
         governance = IGovernance(_governance);
         revenueToken = IERC20(_revenueToken);
 
-        EPOCH_START = governance.EPOCH_START();
-        EPOCH_DURATION = governance.EPOCH_DURATION();
-        daoTreasury = _daoTreasury;
+        // assert valid governance contract
+        uint256 _EPOCH_START = governance.EPOCH_START();
+        require(_EPOCH_START != 0, "InitialInitiative: epoch-start-cannot-be-zero");
+
+        // assert valid revenue token
+        string memory symbol = revenueToken.symbol();
+        require(bytes(symbol).length > 0, "InitialInitiative: revenue-token-symbol-cannot-be-empty");
+
+        require(_receiver != address(0), "InitialInitiative: dao-treasury-cannot-be-zero");
+        receiver = _receiver;
     }
 
     modifier onlyGovernance() {
@@ -37,19 +41,11 @@ contract InitialInitiative is IInitiative {
         _;
     }
 
-    function updateDaoTreasury(address _daoTreasury) external onlyGovernance {
-        daoTreasury = _daoTreasury;
-    }
+    /// @inheritdoc IInitiative
+    function onRegisterInitiative(uint256 _atEpoch) external onlyGovernance {}
 
     /// @inheritdoc IInitiative
-    function onRegisterInitiative(uint256 _atEpoch) external onlyGovernance {
-        // TODO: Implement if needed
-    }
-
-    /// @inheritdoc IInitiative
-    function onUnregisterInitiative(uint256 _atEpoch) external {
-        // TODO: Implement if needed
-    }
+    function onUnregisterInitiative(uint256 _atEpoch) external onlyGovernance {}
 
     /// @inheritdoc IInitiative
     function onAfterAllocateLQTY(
@@ -58,19 +54,17 @@ contract InitialInitiative is IInitiative {
         IGovernance.UserState calldata _userState,
         IGovernance.Allocation calldata _allocation,
         IGovernance.InitiativeState calldata _initiativeState
-    ) external onlyGovernance {
-        // TODO: Implement if needed
-    }
+    ) external onlyGovernance {}
 
     /// @inheritdoc IInitiative
-    function onClaimForInitiative(uint256 _claimEpoch, uint256 _revenue) external {
-        if (daoTreasury == address(0)) {
-            revert ("Dao treasury not set");
+    function onClaimForInitiative(uint256 _claimEpoch, uint256 _revenue) external onlyGovernance {
+        if (receiver == address(0)) {
+            revert ("Receiver not set");
         }
 
         uint256 revenueToForward = revenueToken.balanceOf(address(this));
         if (revenueToForward > 0) {
-            revenueToken.safeTransfer(daoTreasury, revenueToForward);
+            SafeERC20.safeTransfer(revenueToken, receiver, revenueToForward);
         }
     }
 }
