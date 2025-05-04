@@ -17,14 +17,8 @@ contract ForwardingInitiative is Ownable, IInitiative {
     address private _receiver;
 
     constructor(address governance, address revenueToken, address receiver) Ownable(msg.sender) {
-        require(revenueToken != address(0), "ForwardingInitiative: revenue token cannot be zero");
-        
         _governance = IGovernance(governance);
         _revenueToken = IERC20(revenueToken);
-
-        // assert valid revenue token
-        (bool success, ) = address(_revenueToken).call(abi.encodeWithSelector(IERC20.totalSupply.selector));
-        require(success, "ForwardingInitiative: revenue token total supply call must succeed");
 
         require(receiver != address(0), "ForwardingInitiative: receiver cannot be zero");
         _receiver = receiver;
@@ -68,6 +62,8 @@ contract ForwardingInitiative is Ownable, IInitiative {
         // assert valid governance contract
         uint256 EPOCH_START = _governance.EPOCH_START();
         require(EPOCH_START != 0, "ForwardingInitiative: epoch start cannot be zero");
+
+        /// @cupOJoseph do you want to renounce ownership here?  or just leave it as is?
     }
 
     /// @inheritdoc IInitiative
