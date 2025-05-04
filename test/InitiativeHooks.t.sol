@@ -70,7 +70,7 @@ contract InitiativeHooksTest is MockStakingV1Deployer {
     int256[] vetos;
     address voter;
 
-    function setUp() external {
+    function setUp() external virtual {
         vm.warp(START_TIME);
 
         (stakingV1, lqty, lusd) = deployMockStakingV1();
