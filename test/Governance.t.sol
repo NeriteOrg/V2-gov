@@ -2388,6 +2388,9 @@ abstract contract GovernanceTest is Test {
         assertEq(votesAfterChange, votesBeforeChange, "voting power should not change");
         assertEq(address(governance.lqty()), address(replacementVotingToken), "voting token should be set to new token");
         assertEq(governance.owner(), address(0), "owner should be set to new owner");
+
+        vm.expectRevert();
+        governance.setVotingToken(address(11111));
     }
 
     function test_change_voting_token_to_zero_address() public {
