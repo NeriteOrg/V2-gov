@@ -6,6 +6,7 @@ import {VmSafe} from "forge-std/Vm.sol";
 import {console} from "forge-std/console.sol";
 
 import {IERC20Errors} from "openzeppelin/contracts/interfaces/draft-IERC6093.sol";
+import {IERC20} from "openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Strings} from "openzeppelin/contracts/utils/Strings.sol";
 
 import {IGovernance} from "../src/interfaces/IGovernance.sol";
@@ -56,6 +57,7 @@ abstract contract GovernanceTest is Test {
     using Strings for uint256;
 
     ILQTY internal lqty;
+    IERC20 internal replacementVotingToken;
     ILUSD internal lusd;
     ILQTYStaking internal stakingV1;
 
@@ -100,6 +102,7 @@ abstract contract GovernanceTest is Test {
             epochVotingCutoff: EPOCH_VOTING_CUTOFF
         });
 
+        replacementVotingToken = IERC20(address(new MockERC20Tester("Voting Token", "VT")));
         governance = new GovernanceTester(
             address(lqty), address(lusd), address(stakingV1), address(lusd), config, address(this), new address[](0)
         );
@@ -2374,6 +2377,22 @@ abstract contract GovernanceTest is Test {
         // 4. votes should not affect accounting for votes
         (uint256 votes,,,) = governance.votesForInitiativeSnapshot(baseInitiative1);
         assertEq(votes, currentInitiativePower, "voting power of initiative should not be affected by vetos");
+    }
+
+    function test_change_voting_token() public {
+        assertEq(governance.owner(), address(this), "owner should be set to new owner");
+        assertEq(address(governance.lqty()), address(lqty), "voting token should be set to new token");
+        (uint256 votesBeforeChange,,,) = governance.votesForInitiativeSnapshot(baseInitiative1);
+        governance.setVotingToken(address(replacementVotingToken));
+        (uint256 votesAfterChange,,,) = governance.votesForInitiativeSnapshot(baseInitiative1);
+        assertEq(votesAfterChange, votesBeforeChange, "voting power should not change");
+        assertEq(address(governance.lqty()), address(replacementVotingToken), "voting token should be set to new token");
+        assertEq(governance.owner(), address(0), "owner should be set to new owner");
+    }
+
+    function test_change_voting_token_to_zero_address() public {
+        vm.expectRevert();
+        governance.setVotingToken(address(0));
     }
 
     struct StakingOp {
