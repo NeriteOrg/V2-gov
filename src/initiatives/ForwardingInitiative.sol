@@ -16,6 +16,13 @@ contract ForwardingInitiative is Ownable, IInitiative {
     IERC20 private _revenueToken;
     address private _receiver;
 
+    event ForwardingInitiativeRegistered(address indexed governance, address indexed revenueToken, address indexed receiver);
+    event GovernanceUpdated(address indexed newGovernance);
+    event ReceiverUpdated(address indexed newReceiver);
+    event RevenueTokenUpdated(address indexed newRevenueToken);
+    event RevenueForwarded(address indexed receiver, uint256 indexed amount);
+    event NoRevenueForwarded(address indexed receiver);
+
     constructor(address governance, address revenueToken, address receiver) Ownable(msg.sender) {
         _governance = IGovernance(governance);
         _revenueToken = IERC20(revenueToken);
@@ -43,14 +50,17 @@ contract ForwardingInitiative is Ownable, IInitiative {
 
     function updateGovernance(address newGovernance) external onlyOwner {
         _governance = IGovernance(newGovernance);
+        emit GovernanceUpdated(address(_governance));
     }
 
     function updateReceiver(address newReceiver) external onlyOwner {
         _receiver = newReceiver;
+        emit ReceiverUpdated(newReceiver);
     }
 
     function updateRevenueToken(address newRevenueToken) external onlyOwner {
         _revenueToken = IERC20(newRevenueToken);
+        emit RevenueTokenUpdated(address(_revenueToken));
     }
 
     /// @inheritdoc IInitiative
@@ -64,6 +74,7 @@ contract ForwardingInitiative is Ownable, IInitiative {
         require(EPOCH_START != 0, "ForwardingInitiative: epoch start cannot be zero");
 
         /// @cupOJoseph do you want to renounce ownership here?  or just leave it as is?
+        emit ForwardingInitiativeRegistered(address(_governance), address(_revenueToken), _receiver);
     }
 
     /// @inheritdoc IInitiative
@@ -80,14 +91,15 @@ contract ForwardingInitiative is Ownable, IInitiative {
 
     /// @inheritdoc IInitiative
     function onClaimForInitiative(uint256 _claimEpoch, uint256 _revenue) external onlyGovernance {
-        if (address(_receiver) == address(0)) {
-            revert ("Receiver not set");
-        }
 
         // forward all revenue to receiver
         uint256 revenueToForward = _revenueToken.balanceOf(address(this));
         if (revenueToForward > 0) {
             SafeERC20.safeTransfer(_revenueToken, _receiver, revenueToForward);
+            emit RevenueForwarded(_receiver, revenueToForward);
+        } else {
+            emit NoRevenueForwarded(_receiver);
         }
     }
 }
+
